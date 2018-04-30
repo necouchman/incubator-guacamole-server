@@ -106,10 +106,7 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
     sysparam = (RAIL_SYSPARAM_ORDER*) event->wParam;
 #endif
 
-    sysparam->params = 0;
-
     /* Work area */
-    sysparam->params          |= SPI_MASK_SET_WORK_AREA;
     sysparam->workArea.left   = 0;
     sysparam->workArea.top    = 0;
     sysparam->workArea.right  = rdp_client->settings->width;
@@ -120,7 +117,6 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
                                           rdp_client->settings->height);
 
     /* Taskbar */
-    sysparam->params            |= SPI_MASK_TASKBAR_POS;
     sysparam->taskbarPos.left   = 0;
     sysparam->taskbarPos.top    = 0;
     sysparam->taskbarPos.right  = 0;
@@ -130,7 +126,7 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
 
     /* Send response */
     response = freerdp_event_new(RailChannel_Class,
-                                 RailChannel_ClientSystemParam,
+                                 RDP_EVENT_TYPE_RAIL_CLIENT_SET_SYSPARAMS,
                                  NULL,
                                  sysparam);
 
