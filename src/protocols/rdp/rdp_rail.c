@@ -96,11 +96,6 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
     sysparam = (RAIL_SYSPARAM_ORDER*) event->wParam;
 #endif
 
-    response = freerdp_event_new(RailChannel_Class,
-                                 RailChannel_ClientSystemParam,
-                                 NULL,
-                                 sysparam);
-
     /* Work area */
     sysparam->workArea.left   = 0;
     sysparam->workArea.top    = 0;
@@ -116,6 +111,11 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
     sysparam->dragFullWindows = FALSE;
 
     /* Send response */
+    response = freerdp_event_new(RailChannel_Class,
+                                 RailChannel_ClientSystemParam,
+                                 NULL,
+                                 sysparam);
+
     freerdp_channels_send_event(channels, response);
 
 }
