@@ -102,6 +102,10 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
     sysparam->workArea.right  = rdp_client->settings->width;
     sysparam->workArea.bottom = rdp_client->settings->height;
 
+    guac_client_log(client, GUAC_LOG_DEBUG,
+            "Client width/height: %d/%d", rdp_client_settings->settings->width,
+                                          rdp_client_settings->settings->height);
+
     /* Taskbar */
     sysparam->taskbarPos.left   = 0;
     sysparam->taskbarPos.top    = 0;
