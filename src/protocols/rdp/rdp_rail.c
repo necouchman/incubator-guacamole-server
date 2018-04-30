@@ -63,6 +63,16 @@ void guac_rdp_process_rail_event(guac_client* client, wMessage* event) {
             case RailChannel_ServerLocalMoveSize:
             case RailChannel_ServerGetAppIdResponse:
             case RailChannel_ServerLanguageBarInfo:
+#ifdef LEGACY_EVENT
+                guac_client_log(client, GUAC_LOG_DEBUG,
+                        "Ignoring event of type: 0x%x",
+                        event->event_type);
+#else
+                guac_client_log(client, GUAC_LOG_DEBUG,
+                        "Ignoring event of type: 0x%x",
+                        GetMessageType(event->id));
+#endif
+                    
                 break;
 
             default:
