@@ -96,6 +96,8 @@ void guac_rdp_process_rail_get_sysparam(guac_client* client, wMessage* event) {
     sysparam = (RAIL_SYSPARAM_ORDER*) event->wParam;
 #endif
 
+    sysparam->params = 0;
+
     /* Work area */
     sysparam->params          |= SPI_MASK_SET_WORK_AREA;
     sysparam->workArea.left   = 0;
