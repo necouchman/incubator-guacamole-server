@@ -513,7 +513,7 @@ guac_rdp_clipboard* guac_rdp_clipboard_alloc(guac_client* client) {
 }
 
 void guac_rdp_clipboard_load_plugin(guac_rdp_clipboard* clipboard,
-        rdpContext* context) {
+        rdpContext* context, int disable_copy) {
 
     /* Attempt to load FreeRDP support for the CLIPRDR channel */
     if (guac_freerdp_channels_load_plugin(context, "cliprdr", NULL)) {
@@ -525,9 +525,10 @@ void guac_rdp_clipboard_load_plugin(guac_rdp_clipboard* clipboard,
         return;
     }
 
-    /* Complete RDP side of initialization when channel is connected */
-    PubSub_SubscribeChannelConnected(context->pubSub,
-            (pChannelConnectedEventHandler) guac_rdp_cliprdr_channel_connected);
+    /* If enabled, complete RDP side of initialization when channel is connected. */
+    if (!disable_copy)
+        PubSub_SubscribeChannelConnected(context->pubSub,
+                (pChannelConnectedEventHandler) guac_rdp_cliprdr_channel_connected);
 
     guac_client_log(clipboard->client, GUAC_LOG_DEBUG, "Support for CLIPRDR "
             "(clipboard redirection) registered. Awaiting channel "

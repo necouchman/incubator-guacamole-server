@@ -91,9 +91,13 @@ guac_rdp_clipboard* guac_rdp_clipboard_alloc(guac_client* client);
  *
  * @param context
  *     The rdpContext associated with the FreeRDP side of the RDP connection.
+ * 
+ * @param disable_copy
+ *     Non-zero if copying from remote system to Guacamole should be disabled,
+ *     zero if copying from the remote system to Guacamole should be allowed.
  */
 void guac_rdp_clipboard_load_plugin(guac_rdp_clipboard* clipboard,
-        rdpContext* context);
+        rdpContext* context, int disable_copy);
 
 /**
  * Frees the resources associated with clipboard support for RDP and handling
