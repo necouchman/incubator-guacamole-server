@@ -125,31 +125,6 @@ static void guac_spice_client_main_channel_handler(SpiceChannel *channel,
     
 }
 
-/**
- * Callback that is invoked when the SPICE client receives an event indicating
- * that the agent within the SPICE server is connected, allowing us to take
- * some action based on that connection.
- * 
- * @param channel
- *     The channel that received the event.
- * 
- * @param client
- *     The guacamole_client object associated with this event.
- */
-static void guac_spice_client_agent_connected_handler(SpiceChannel *channel,
-        guac_client* client) {
-    
-    gboolean connected;
-    
-    g_object_get(channel, SPICE_PROPERTY_AGENT_CONNECTED, &connected, NULL);
-    
-    if (connected)
-        guac_client_log(client, GUAC_LOG_DEBUG, "SPICE agent connected.");
-    else
-        guac_client_log(client, GUAC_LOG_DEBUG, "SPICE agent not connected.");
-    
-}
-
 int guac_client_init(guac_client* client) {
 
     /* Set client args */
@@ -244,12 +219,6 @@ void guac_spice_client_channel_handler(SpiceSession *spice_session,
         spice_client->main_channel = SPICE_MAIN_CHANNEL(channel);
         g_signal_connect(channel, SPICE_SIGNAL_CHANNEL_EVENT,
                 G_CALLBACK(guac_spice_client_main_channel_handler), client);
-        g_signal_connect(channel, SPICE_SIGNAL_MAIN_AGENT_UPDATE,
-                G_CALLBACK(guac_spice_client_agent_connected_handler), client);
-        g_signal_connect(channel, SPICE_SIGNAL_NEW_FILE_TRANSFER,
-                G_CALLBACK(guac_spice_client_file_transfer_handler), client);
-        g_signal_connect(channel, SPICE_SIGNAL_MAIN_MOUSE_UPDATE,
-                G_CALLBACK(guac_spice_mouse_mode_update), client);
     }
     
     /* Check if this is the display channel and register display handlers. */

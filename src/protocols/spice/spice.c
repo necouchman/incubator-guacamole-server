@@ -61,38 +61,23 @@ SpiceSession* guac_spice_get_session(guac_client* client) {
     
     /* Create a new SPICE client. */
     SpiceSession* spice_session = spice_session_new();
-    spice_set_session_option(spice_session);
     
-    /* Associate the SPICE session with the Guacamole Client data. */
-    g_object_set_data_full(G_OBJECT(spice_session),
-            GUAC_SPICE_CLIENT_KEY, client, g_free);
-    
-    guac_client_log(client, GUAC_LOG_DEBUG, "Registering main channel callback.");
+    guac_client_log(client, GUAC_LOG_DEBUG, "Registering new channel callback.");
     
     /* Register a callback for handling new channel events. */
     g_signal_connect(spice_session, SPICE_SIGNAL_CHANNEL_NEW,
             G_CALLBACK(guac_spice_client_channel_handler), client);
     
     guac_client_log(client, GUAC_LOG_DEBUG, "Setting up connection properties.");
-    
-    /* Do not handle clipboard and local cursor if read-only */
-    g_object_set(G_OBJECT(spice_session),
-            SPICE_PROPERTY_READ_ONLY, spice_settings->read_only, NULL);
-    
-    guac_client_log(client, GUAC_LOG_DEBUG, "Setting up authentication parameters.");
-    
-    /* Set authentication data */
-    if (spice_settings->username != NULL)
-        g_object_set(spice_session,
-                SPICE_PROPERTY_USERNAME, spice_settings->username, NULL);
-    if (spice_settings->password != NULL)
-        g_object_set(spice_session,
-                SPICE_PROPERTY_PASSWORD, spice_settings->password, NULL);
 
+    g_object_set(spice_session, SPICE_PROPERTY_ENABLE_USBREDIR, FALSE, NULL);
+    
     guac_client_log(client, GUAC_LOG_DEBUG, "Setting up host/port.");
     
     /* Set hostname and port */
+    g_object_set(spice_session, SPICE_PROPERTY_CLIENT_SOCKETS, FALSE, NULL);
     g_object_set(spice_session, SPICE_PROPERTY_HOST, spice_settings->hostname, NULL);
+    g_object_set(spice_session, "uri", "spice://localhost?tls-port=55000", NULL);
     guac_client_log(client, GUAC_LOG_DEBUG, "Connecting to host %s", spice_settings->hostname);
     if (spice_settings->tls) {
         guac_client_log(client, GUAC_LOG_DEBUG, "Using TLS mode on port %s", spice_settings->port);
@@ -110,27 +95,6 @@ SpiceSession* guac_spice_get_session(guac_client* client) {
         g_object_set(spice_session,
                 SPICE_PROPERTY_PORT, spice_settings->port, NULL);
     }
-    
-    /* Set the proxy server if specified. */
-    if (spice_settings->proxy != NULL)
-        g_object_set(spice_session,
-                SPICE_PROPERTY_PROXY, spice_settings->proxy, NULL);
-    
-    guac_client_log(client, GUAC_LOG_DEBUG, "Setting color depth.");
-    
-    /* Set color depth */
-    if (spice_settings->color_depth > 0)
-        g_object_set(spice_session,
-                SPICE_PROPERTY_COLOR_DEPTH, spice_settings->color_depth, NULL);
-    
-    guac_client_log(client, GUAC_LOG_DEBUG, "Setting up file transfers.");
-    
-    /* Set up file transfer directory. */
-    if (spice_settings->file_transfer && spice_settings->file_directory != NULL)
-        g_object_set(spice_session,
-                SPICE_PROPERTY_SHARED_DIR, spice_settings->file_directory,
-                SPICE_PROPERTY_SHARED_DIR_RO, spice_settings->file_transfer_ro,
-                NULL);
 
     guac_client_log(client, GUAC_LOG_DEBUG, "Finished setting properties.");
     
@@ -170,125 +134,6 @@ void* guac_spice_client_thread(void* data) {
                 "Unable to connect to SPICE server.");
         return NULL;
     }
-
-#ifdef ENABLE_COMMON_SSH
-    guac_client_log(client, GUAC_LOG_DEBUG, "Initializing SFTP and looking for configuration.");
-    guac_common_ssh_init(client);
-
-    /* Connect via SSH if SFTP is enabled */
-    if (settings->enable_sftp) {
-
-        guac_client_log(client, GUAC_LOG_DEBUG, "SFTP enabled, setting up connection.");
-        
-        /* Abort if username is missing */
-        if (settings->sftp_username == NULL) {
-            guac_client_abort(client, GUAC_PROTOCOL_STATUS_SERVER_ERROR,
-                    "SFTP username is required if SFTP is enabled.");
-            return NULL;
-        }
-
-        guac_client_log(client, GUAC_LOG_DEBUG,
-                "Connecting via SSH for SFTP filesystem access.");
-
-        spice_client->sftp_user =
-            guac_common_ssh_create_user(settings->sftp_username);
-
-        /* Import private key, if given */
-        if (settings->sftp_private_key != NULL) {
-
-            guac_client_log(client, GUAC_LOG_DEBUG,
-                    "Authenticating with private key.");
-
-            /* Abort if private key cannot be read */
-            if (guac_common_ssh_user_import_key(spice_client->sftp_user,
-                        settings->sftp_private_key,
-                        settings->sftp_passphrase)) {
-                guac_client_abort(client, GUAC_PROTOCOL_STATUS_SERVER_ERROR,
-                        "Private key unreadable.");
-                return NULL;
-            }
-
-        }
-
-        /* Otherwise, use specified password */
-        else {
-            guac_client_log(client, GUAC_LOG_DEBUG,
-                    "Authenticating with password.");
-            guac_common_ssh_user_set_password(spice_client->sftp_user,
-                    settings->sftp_password);
-        }
-
-        /* Attempt SSH connection */
-        spice_client->sftp_session =
-            guac_common_ssh_create_session(client, settings->sftp_hostname,
-                    settings->sftp_port, spice_client->sftp_user, settings->sftp_server_alive_interval,
-                    settings->sftp_host_key, NULL);
-
-        /* Fail if SSH connection does not succeed */
-        if (spice_client->sftp_session == NULL) {
-            /* Already aborted within guac_common_ssh_create_session() */
-            return NULL;
-        }
-
-        /* Load filesystem */
-        spice_client->sftp_filesystem =
-            guac_common_ssh_create_sftp_filesystem(spice_client->sftp_session,
-                    settings->sftp_root_directory, NULL,
-                    settings->sftp_disable_download,
-                    settings->sftp_disable_upload);
-
-        /* Expose filesystem to connection owner */
-        guac_client_for_owner(client,
-                guac_common_ssh_expose_sftp_filesystem,
-                spice_client->sftp_filesystem);
-
-        /* Abort if SFTP connection fails */
-        if (spice_client->sftp_filesystem == NULL) {
-            guac_client_abort(client, GUAC_PROTOCOL_STATUS_UPSTREAM_ERROR,
-                    "SFTP connection failed.");
-            return NULL;
-        }
-
-        /* Configure destination for basic uploads, if specified */
-        if (settings->sftp_directory != NULL)
-            guac_common_ssh_sftp_set_upload_path(
-                    spice_client->sftp_filesystem,
-                    settings->sftp_directory);
-
-        guac_client_log(client, GUAC_LOG_DEBUG,
-                "SFTP connection succeeded.");
-
-    }
-#endif
-
-    guac_client_log(client, GUAC_LOG_DEBUG, "SFTP finished, setting up remaining configuration.");
-    
-    /* Set remaining client data */
-    
-
-    /* Set up screen recording, if requested */
-    if (settings->recording_path != NULL) {
-        guac_client_log(client, GUAC_LOG_WARNING, "Session recording is enabled, creating the recording.");
-        spice_client->recording = guac_common_recording_create(client,
-                settings->recording_path,
-                settings->recording_name,
-                settings->create_recording_path,
-                !settings->recording_exclude_output,
-                !settings->recording_exclude_mouse,
-                settings->recording_include_keys);
-    }
-
-    /* If not read-only, set an appropriate cursor */
-    /*
-    if (settings->read_only == 0) {
-        guac_client_log(client, GUAC_LOG_DEBUG, "Connection is not read-only, setting up input handlers.");
-        if (settings->remote_cursor)
-            guac_common_cursor_set_dot(spice_client->display->cursor);
-        else
-            guac_common_cursor_set_pointer(spice_client->display->cursor);
-
-    }
-    */
     
     guac_client_log(client, GUAC_LOG_DEBUG, "Configuration completed, flushing socket.");
 

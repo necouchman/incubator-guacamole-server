@@ -75,6 +75,12 @@
 #define SPICE_PROPERTY_CHANNEL_ID "channel-id"
 
 /**
+ * SPICE library property that determines whether or not the sockets are provided
+ * by the client.
+ */
+#define SPICE_PROPERTY_CLIENT_SOCKETS "client-sockets"
+
+/**
  * The property that tells the SPICE client the color depth to use when
  * allocating new displays.
  */
@@ -85,6 +91,11 @@
  * recording. The SPICE client default is TRUE.
  */
 #define SPICE_PROPERTY_ENABLE_AUDIO "enable-audio"
+
+/**
+ * Property that enables or disables USB redirection.
+ */
+#define SPICE_PROPERTY_ENABLE_USBREDIR "enable-usbredir"
 
 /**
  * The property that contains the hostname, IP address, or URL of the SPICE
